@@ -31,4 +31,10 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'weather' => [
+        'key' => env('OPEN_WEATHER_APP_URL'),
+        'url' => env('OPEN_WEATHER_APP_KEY'),
+        'rateLimit' => env('OPEN_WEATHER_APP_RATE_LIMIT'),
+    ],
+
 ];

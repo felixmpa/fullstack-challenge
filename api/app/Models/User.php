@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\Builder;
+use App\Scopes\User as Scope;
 
 class User extends Authenticatable
 {
@@ -39,4 +41,19 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
     ];
+
+    /*
+     * The "booted" method of the model
+     *
+     * @return void
+     */
+    protected static function booted()
+    {
+        static::addGlobalScope(new Scope);
+    }
+
+    public function scopeActive(Builder $query): Builder
+    {
+        return $query->where('is_activated', 1);
+    }
 }
