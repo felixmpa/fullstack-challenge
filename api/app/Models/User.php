@@ -56,4 +56,9 @@ class User extends Authenticatable
     {
         return $query->where('is_activated', 1);
     }
+
+    public function forecast()
+    {
+        return $this->hasOne(UserWeather::class, 'user_id', 'id');
+    }
 }

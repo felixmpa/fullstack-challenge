@@ -5,22 +5,24 @@ namespace App\Console\Commands;
 use App\Models\Temperature;
 use App\Models\User;
 use App\Models\Weather;
-use Faker\Calculator\Ean;
+use App\Models\UserWeather;
 use Illuminate\Console\Command;
 use App\Models\Coord;
 use App\Services\WeatherBuilder;
 use App\Services\OpenWeatherMap;
 use Redis;
-use Illuminate\Support\Facades;
+use DB;
 
 class UpdateWeathers extends Command
 {
+    protected $attempts;
+
     /**
      * The name and signature of the console command.
      *
      * @var string
      */
-    protected $signature = 'update:weathers';
+    protected $signature = 'update:weathers {user?}';
 
     /**
      * The console command description.
@@ -36,34 +38,49 @@ class UpdateWeathers extends Command
      */
     public function handle(): void
     {
-        $activeUsers = User::active()->distinct('latitude','longitude');
+        $user = $this->argument('user');
 
-        $attempt = 0;
+        if ($user != null) {
 
-        foreach($activeUsers->get() as $user)
-        {
-            $service = new OpenWeatherMap($user->latitude, $user->longitude);
-            $weatherBuilder = new WeatherBuilder($service);
+            $this->cacheUserForecast($user); //for single unusual call from controller
 
-            //rate limit based on seconds
-            if($attempt >= $service->getRateLimit())
-                sleep(5);
+        } else {
 
-            //keep extract data using generic compatibility with another weather services integration
-            if($service instanceof OpenWeatherMap); {
-                $data = $weatherBuilder->weather();
-                $weather = $this->extractOpenWeatherMapData($data);
+            $activeUsers = User::active()->distinct('latitude', 'longitude');
+            $this->attempts = 0;
+
+            foreach ($activeUsers->get() as $user) {
+                $this->attempts++;
+                $this->cacheUserForecast($user);
             }
 
-            if(property_exists($weather, 'coord') &&
-                property_exists($weather, 'temperature')) {
-                Redis::set(sprintf("%s:%s", $weather->coord->lat, $weather->coord->lon), json_encode($weather));
-            }
+            $this->info("update:weathers completed - $this->attempts coords processed");
+        }
+    }
 
-            $attempt++;
+    public function cacheUserForecast($user)
+    {
+        $service = new OpenWeatherMap($user->longitude, $user->latitude);
+        $weatherBuilder = new WeatherBuilder($service);
+
+        //rate limit based on seconds
+        if($this->attempts >= $service->getRateLimit())
+            sleep(5);
+
+        //keep extract data using generic compatibility with another weather services integration
+        if($service instanceof OpenWeatherMap); {
+            $data = $weatherBuilder->weather();
+            $weather = $this->extractOpenWeatherMapData($data);
         }
 
-        $this->info("update:weathers completed - $attempt coords processed");
+        if(property_exists($weather, 'coord') && property_exists($weather, 'temperature')) {
+            DB::table('users_weathers')->updateOrInsert(
+                ['user_id' => $user->id],
+                ['temp' => $weather->temperature->temp]
+            );
+            $key = sprintf("%s:%s", $weather->coord->lon, $weather->coord->lat);
+            Redis::set($key, json_encode($weather));
+        }
     }
 
     private function extractOpenWeatherMapData($data): Weather
@@ -78,7 +95,7 @@ class UpdateWeathers extends Command
             $weather->main = $objWeather->main;
             $weather->description = $objWeather->description;
             $weather->icon = $objWeather->icon;
-            $weather->coord = new Coord($objCoord->lat, $objCoord->lon);
+            $weather->coord = new Coord($objCoord->lon, $objCoord->lat);
             $weather->temperature = new Temperature($objTemp);
 
             return $weather;

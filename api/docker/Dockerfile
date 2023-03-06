@@ -2,11 +2,9 @@ FROM php:8.1-apache
 
 RUN apt-get update
 
-RUN apt-get install -y \
+RUN apt-get install cron -y \
     pkg-config  \
-    libzip-dev \
-    cron \
-    vim
+    libzip-dev
 
 RUN docker-php-ext-install \
     mysqli \
@@ -23,13 +21,9 @@ RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local
 RUN a2enmod rewrite
 RUN service apache2 restart
 
-#Add crontab to cron directory
-ADD crontab /etc/cron.d/laravel-cron
-#Add permission
-RUN chmod 0644 /etc/cron.d/laravel-cron
-#Add cron job
-RUN crontab /etc/cron.d/laravel-cron
-#Add log file
+COPY crontab /etc/cron.d/crontab
+RUN chmod 0644 /etc/cron.d/crontab
+RUN crontab /etc/cron.d/crontab
 RUN touch /var/log/cron.log
-#Run container startup
-CMD cron && tail -f /var/log/cron.log
+#CMD cron && tail -f /var/log/cron.log
+

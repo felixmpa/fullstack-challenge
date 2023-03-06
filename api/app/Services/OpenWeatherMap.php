@@ -13,15 +13,16 @@ class OpenWeatherMap implements WeatherServiceInterface
     private int $rateLimit;
 
     private Response $response;
-    private string $lat;
+
     private string $lon;
-    public function __construct(string $lat, string $lon)
+    private string $lat;
+    public function __construct(string $lon, string $lat)
     {
         $this->endpoint = env('OPEN_WEATHER_APP_URL');
         $this->appid = env('OPEN_WEATHER_APP_KEY');
         $this->rateLimit = env('OPEN_WEATHER_APP_RATE_LIMIT');
-        $this->lat = $lat;
         $this->lon = $lon;
+        $this->lat = $lat;
     }
     public function weather()
     {
