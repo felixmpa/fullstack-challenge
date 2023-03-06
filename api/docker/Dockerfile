@@ -4,7 +4,9 @@ RUN apt-get update
 
 RUN apt-get install -y \
     pkg-config  \
-    libzip-dev
+    libzip-dev \
+    cron \
+    vim
 
 RUN docker-php-ext-install \
     mysqli \
@@ -20,3 +22,14 @@ RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local
 
 RUN a2enmod rewrite
 RUN service apache2 restart
+
+#Add crontab to cron directory
+ADD crontab /etc/cron.d/laravel-cron
+#Add permission
+RUN chmod 0644 /etc/cron.d/laravel-cron
+#Add cron job
+RUN crontab /etc/cron.d/laravel-cron
+#Add log file
+RUN touch /var/log/cron.log
+#Run container startup
+CMD cron && tail -f /var/log/cron.log

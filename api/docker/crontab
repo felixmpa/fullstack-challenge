@@ -1,0 +1,2 @@
+* * * * * cd /usr/local/bin && ./php /var/www/html/artisan schedule:run >> /var/www/html/storage/logs/schedule_run.log 2>&1
+
